@@ -7,6 +7,8 @@ using Microsoft.eShopWeb.ApplicationCore.Entities.OrderAggregate;
 using Microsoft.eShopWeb.ApplicationCore.Exceptions;
 using Microsoft.eShopWeb.ApplicationCore.Interfaces;
 using Microsoft.eShopWeb.Infrastructure.Identity;
+using Microsoft.eShopWeb.Infrastructure.Services.OrderItemsDelivery;
+using Microsoft.eShopWeb.Infrastructure.Services.OrderItemsReserver;
 using Microsoft.eShopWeb.Web.Interfaces;
 
 namespace Microsoft.eShopWeb.Web.Pages.Basket;
@@ -20,18 +22,24 @@ public class CheckoutModel : PageModel
     private string? _username = null;
     private readonly IBasketViewModelService _basketViewModelService;
     private readonly IAppLogger<CheckoutModel> _logger;
+    private readonly IOrderItemsReserverService _orderItemsReserverService;
+    private readonly IOrderItemsDeliveryService _orderItemsDeliveryService;
 
     public CheckoutModel(IBasketService basketService,
         IBasketViewModelService basketViewModelService,
         SignInManager<ApplicationUser> signInManager,
         IOrderService orderService,
-        IAppLogger<CheckoutModel> logger)
+        IAppLogger<CheckoutModel> logger,
+        IOrderItemsReserverService orderItemsReserverService,
+        IOrderItemsDeliveryService orderItemsDeliveryService)
     {
         _basketService = basketService;
         _signInManager = signInManager;
         _orderService = orderService;
         _basketViewModelService = basketViewModelService;
         _logger = logger;
+        _orderItemsReserverService = orderItemsReserverService;
+        _orderItemsDeliveryService = orderItemsDeliveryService;
     }
 
     public BasketViewModel BasketModel { get; set; } = new BasketViewModel();
@@ -54,8 +62,12 @@ public class CheckoutModel : PageModel
 
             var updateModel = items.ToDictionary(b => b.Id.ToString(), b => b.Quantity);
             await _basketService.SetQuantities(BasketModel.Id, updateModel);
-            await _orderService.CreateOrderAsync(BasketModel.Id, new Address("123 Main St.", "Kent", "OH", "United States", "44240"));
+            var createdOrder = await _orderService.CreateOrderAsync(BasketModel.Id,
+                new Address("123 Main St.", "Kent", "OH", "United States", "44240"));
             await _basketService.DeleteBasketAsync(BasketModel.Id);
+
+            await _orderItemsDeliveryService.CreateDeliveryAsync(createdOrder);
+            await _orderItemsReserverService.ReserveAsync(createdOrder.BuyerId, updateModel);
         }
         catch (EmptyBasketOnCheckoutException emptyBasketOnCheckoutException)
         {

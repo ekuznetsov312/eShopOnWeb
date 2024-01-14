@@ -4,6 +4,8 @@ using Microsoft.eShopWeb.Infrastructure.Data;
 using Microsoft.eShopWeb.Infrastructure.Data.Queries;
 using Microsoft.eShopWeb.Infrastructure.Logging;
 using Microsoft.eShopWeb.Infrastructure.Services;
+using Microsoft.eShopWeb.Infrastructure.Services.OrderItemsDelivery;
+using Microsoft.eShopWeb.Infrastructure.Services.OrderItemsReserver;
 
 namespace Microsoft.eShopWeb.Web.Configuration;
 
@@ -23,7 +25,10 @@ public static class ConfigureCoreServices
         services.AddSingleton<IUriComposer>(new UriComposer(catalogSettings));
 
         services.AddScoped(typeof(IAppLogger<>), typeof(LoggerAdapter<>));
+
         services.AddTransient<IEmailSender, EmailSender>();
+        services.AddScoped<IOrderItemsReserverService, OrderItemsReserverService>();
+        services.AddScoped<IOrderItemsDeliveryService, OrderItemsDeliveryService>();
 
         return services;
     }
